@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lua Deobfuscator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+        
+        .content {
+            padding: 30px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .section {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .section h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+        
+        textarea {
+            flex: 1;
+            min-height: 400px;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .output {
+            flex: 1;
+            min-height: 400px;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            background: #f8f9fa;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+        
+        .btn-secondary:hover {
+            background: #d0d0d0;
+        }
+        
+        .stats {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f0f4ff;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .stats h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .stat-item {
+            margin: 5px 0;
+            color: #555;
+        }
+        
+        .full-width {
+            grid-column: 1 / -1;
+        }
+        
+        @media (max-width: 768px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 1.8em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔓 Lua Deobfuscator</h1>
+            <p>Decode obfuscated Lua code from WeAreDevs and other obfuscators</p>
+        </div>
+        
+        <div class="content">
+            <div class="section">
+                <h2>📝 Input (Obfuscated Code)</h2>
+                <textarea id="input" placeholder='Paste your obfuscated Lua code here...
+
+Example:
+--[[ v1.0.0 https://wearedevs.net/obfuscator ]] 
+return(function(...)local S={
+"\088\065\049\103\065\048\061\061",
+"\098\052\082\097\101\111\061\061"
+}
+...'></textarea>
+                <div class="controls">
+                    <button class="btn-primary" onclick="deobfuscate()">🚀 Deobfuscate</button>
+                    <button class="btn-secondary" onclick="clearAll()">🗑️ Clear</button>
+                    <button class="btn-secondary" onclick="copyOutput()">📋 Copy Output</button>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h2>✨ Output (Decoded)</h2>
+                <div id="output" class="output">Results will appear here...</div>
+            </div>
+            
+            <div class="section full-width">
+                <h2>📊 Analysis</h2>
+                <div id="stats" class="stats">
+                    <h3>Statistics</h3>
+                    <div class="stat-item">Click "Deobfuscate" to analyze the code</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function decodeOctal(str) {
+            let result = '';
+            let i = 0;
+            while (i < str.length) {
+                if (str[i] === '\\' && i + 3 < str.length) {
+                    const octal = str.substring(i + 1, i + 4);
+                    if (/^\d{3}$/.test(octal)) {
+                        result += String.fromCharCode(parseInt(octal, 8));
+                        i += 4;
+                        continue;
+                    }
+                }
+                result += str[i];
+                i++;
+            }
+            return result;
+        }
+
+        function decodeBase64(str) {
+            try {
+                return atob(str);
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function deobfuscate() {
+            const input = document.getElementById('input').value;
+            const output = document.getElementById('output');
+            const stats = document.getElementById('stats');
+            
+            if (!input.trim()) {
+                output.textContent = 'Please paste obfuscated code first!';
+                return;
+            }
+            
+            let result = '=== DEOBFUSCATION RESULTS ===\n\n';
+            let stringCount = 0;
+            let base64Count = 0;
+            const decodedStrings = [];
+            const base64Decoded = [];
+            
+            // Extract all quoted strings with octal sequences
+            const stringPattern = /"([^"\\]*(?:\\[0-9]{3}[^"\\]*)*)"/g;
+            let match;
+            
+            while ((match = stringPattern.exec(input)) !== null) {
+                const encoded = match[1];
+                const decoded = decodeOctal(encoded);
+                stringCount++;
+                decodedStrings.push(decoded);
+                
+                result += `[${stringCount}] Original: "${encoded}"\n`;
+                result += `    Decoded:  "${decoded}"\n`;
+                
+                // Try base64 decode
+                if (decoded.includes('=') || decoded.length % 4 === 0) {
+                    const b64 = decodeBase64(decoded);
+                    if (b64 && /^[\x20-\x7E\s]*$/.test(b64)) {
+                        result += `    Base64:   "${b64}"\n`;
+                        base64Count++;
+                        base64Decoded.push(b64);
+                    }
+                }
+                result += '\n';
+            }
+            
+            // Check for obfuscator info
+            const versionMatch = input.match(/v(\d+\.\d+\.\d+)/);
+            const urlMatch = input.match(/https?:\/\/[^\s\]]+/);
+            
+            output.textContent = result;
+            
+            // Update statistics
+            stats.innerHTML = `
+                <h3>📊 Statistics</h3>
+                <div class="stat-item"><strong>Obfuscator:</strong> ${urlMatch ? urlMatch[0] : 'Unknown'}</div>
+                <div class="stat-item"><strong>Version:</strong> ${versionMatch ? versionMatch[1] : 'Unknown'}</div>
+                <div class="stat-item"><strong>Total Strings Found:</strong> ${stringCount}</div>
+                <div class="stat-item"><strong>Base64 Decoded:</strong> ${base64Count}</div>
+                <div class="stat-item"><strong>Input Size:</strong> ${input.length} characters</div>
+                <div class="stat-item"><strong>Output Size:</strong> ${result.length} characters</div>
+            `;
+            
+            if (stringCount === 0) {
+                output.textContent = '⚠️ No encoded strings found. Make sure you pasted valid obfuscated Lua code.';
+            }
+        }
+
+        function clearAll() {
+            document.getElementById('input').value = '';
+            document.getElementById('output').textContent = 'Results will appear here...';
+            document.getElementById('stats').innerHTML = `
+                <h3>Statistics</h3>
+                <div class="stat-item">Click "Deobfuscate" to analyze the code</div>
+            `;
+        }
+
+        function copyOutput() {
+            const output = document.getElementById('output').textContent;
+            navigator.clipboard.writeText(output).then(() => {
+                alert('✓ Output copied to clipboard!');
+            });
+        }
+
+        // Allow Ctrl+Enter to deobfuscate
+        document.getElementById('input').addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'Enter') {
+                deobfuscate();
+            }
+        });
+    </script>
+</body>
+</html>
